@@ -63,14 +63,22 @@ def _serialize_messages(messages) -> list[dict]:
     """Build a chronological debug trace from LangGraph messages."""
     trace = []
     for msg in messages:
-        entry = {"type": type(msg).__name__, "content": _extract_text(msg.content)}
+        text = _extract_text(msg.content)
+        entry = {"type": type(msg).__name__, "content": text}
+
         if hasattr(msg, "tool_calls") and msg.tool_calls:
             entry["tool_calls"] = [
                 {"name": tc["name"], "args": tc.get("args", {})}
                 for tc in msg.tool_calls
             ]
+            # When the AI has both text content and tool calls,
+            # the text is the agent's reasoning for calling the tool.
+            if text.strip():
+                entry["reasoning"] = text
+
         if hasattr(msg, "name") and msg.name:
             entry["tool_name"] = msg.name
+
         trace.append(entry)
     return trace
 

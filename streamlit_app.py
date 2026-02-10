@@ -1,4 +1,3 @@
-import json
 import os
 import uuid
 
@@ -23,49 +22,85 @@ if st.sidebar.button("New chat"):
 
 show_debug = st.sidebar.toggle("Show debug trace", value=False)
 
-STEP_LABELS = {
-    "HumanMessage": "User",
-    "AIMessage": "Assistant",
-    "ToolMessage": "Tool result",
-}
+# ── Debug rendering ──────────────────────────────────────────────────────────
+
+
+def _render_step_user(step):
+    """Render a HumanMessage step."""
+    st.markdown(f":bust_in_silhouette: **User**")
+    st.info(step.get("content", ""), icon=None)
+
+
+def _render_step_tool_call(step):
+    """Render an AIMessage that contains tool calls (and optional reasoning)."""
+    reasoning = step.get("reasoning", "")
+    if reasoning:
+        st.markdown(":thought_balloon: **Agent reasoning**")
+        st.caption(reasoning)
+
+    for tc in step.get("tool_calls", []):
+        name = tc["name"]
+        args = tc.get("args", {})
+        st.markdown(f":hammer_and_wrench: **Tool call** &mdash; `{name}`")
+        if args:
+            st.json(args, expanded=False)
+
+
+def _render_step_tool_result(step):
+    """Render a ToolMessage (tool return value)."""
+    tool_name = step.get("tool_name", "unknown")
+    content = step.get("content", "")
+    st.markdown(f":package: **Tool result** &mdash; `{tool_name}`")
+    st.code(content, language="json")
+
+
+def _render_step_assistant(step):
+    """Render a final AIMessage (no tool calls)."""
+    st.markdown(":robot_face: **Final response**")
+    st.success(step.get("content", ""))
 
 
 def render_debug(debug_trace):
-    """Render the debug trace inside an expander."""
+    """Render a structured, collapsible debug trace."""
     with st.expander("Debug trace", expanded=False):
-        for i, step in enumerate(debug_trace, 1):
-            msg_type = step.get("type", "Unknown")
-            label = STEP_LABELS.get(msg_type, msg_type)
+        for i, step in enumerate(debug_trace):
+            msg_type = step.get("type", "")
 
-            if msg_type == "AIMessage" and step.get("tool_calls"):
-                calls = ", ".join(
-                    f'`{tc["name"]}({json.dumps(tc.get("args", {}), ensure_ascii=False)})`'
-                    for tc in step["tool_calls"]
-                )
-                st.markdown(f"**{i}. {label} → tool call:** {calls}")
-            elif msg_type == "ToolMessage":
-                tool_name = step.get("tool_name", "?")
-                st.markdown(f"**{i}. {label} (`{tool_name}`):**")
-                st.code(step.get("content", ""), language="json")
-            else:
-                st.markdown(f"**{i}. {label}:** {step.get('content', '')}")
+            if i > 0:
+                st.divider()
+
+            col_num, col_body = st.columns([0.06, 0.94])
+            with col_num:
+                st.markdown(f"**{i + 1}**")
+
+            with col_body:
+                if msg_type == "HumanMessage":
+                    _render_step_user(step)
+                elif msg_type == "AIMessage" and step.get("tool_calls"):
+                    _render_step_tool_call(step)
+                elif msg_type == "ToolMessage":
+                    _render_step_tool_result(step)
+                elif msg_type == "AIMessage":
+                    _render_step_assistant(step)
+                else:
+                    st.markdown(f"**{msg_type}:** {step.get('content', '')}")
 
 
-# Render chat history
+# ── Chat history ─────────────────────────────────────────────────────────────
+
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if show_debug and msg.get("debug"):
             render_debug(msg["debug"])
 
-# Chat input
+# ── Chat input ───────────────────────────────────────────────────────────────
+
 if prompt := st.chat_input("Ask me anything about travel…"):
-    # Show + store user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Call the API
     with st.chat_message("assistant"):
         debug_trace = None
         with st.spinner("Thinking…"):
