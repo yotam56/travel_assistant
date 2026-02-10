@@ -44,6 +44,37 @@ class CompletionRequest(BaseModel):
     input: str
 
 
+def _extract_text(content) -> str:
+    """Extract plain text from a content field that may be a string or a list of blocks."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text", ""))
+        return "\n".join(parts)
+    return str(content)
+
+
+def _serialize_messages(messages) -> list[dict]:
+    """Build a chronological debug trace from LangGraph messages."""
+    trace = []
+    for msg in messages:
+        entry = {"type": type(msg).__name__, "content": _extract_text(msg.content)}
+        if hasattr(msg, "tool_calls") and msg.tool_calls:
+            entry["tool_calls"] = [
+                {"name": tc["name"], "args": tc.get("args", {})}
+                for tc in msg.tool_calls
+            ]
+        if hasattr(msg, "name") and msg.name:
+            entry["tool_name"] = msg.name
+        trace.append(entry)
+    return trace
+
+
 @app.post("/completions")
 async def completions(req: CompletionRequest):
     from app.agent import agent
@@ -74,9 +105,10 @@ async def completions(req: CompletionRequest):
                 "index": 0,
                 "message": {
                     "role": "assistant",
-                    "content": last_message.content,
+                    "content": _extract_text(last_message.content),
                 },
                 "finish_reason": "stop",
             }
         ],
+        "debug": _serialize_messages(result["messages"]),
     }
