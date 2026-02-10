@@ -4,6 +4,7 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 logging.basicConfig(
@@ -48,13 +49,19 @@ async def completions(req: CompletionRequest):
     from app.agent import agent
 
     logger.info("Invoking agent for thread_id=%s", req.thread_id)
-    config = {"configurable": {"thread_id": req.thread_id}}
-    result = agent.invoke(
-        {"messages": [{"role": "user", "content": req.input}]},
-        config=config,
-    )
-
-    last_message = result["messages"][-1]
+    try:
+        config = {"configurable": {"thread_id": req.thread_id}}
+        result = agent.invoke(
+            {"messages": [{"role": "user", "content": req.input}]},
+            config=config,
+        )
+        last_message = result["messages"][-1]
+    except Exception:
+        logger.exception("Agent invocation failed for thread_id=%s", req.thread_id)
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Something went wrong. Please try again later."},
+        )
 
     return {
         "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
