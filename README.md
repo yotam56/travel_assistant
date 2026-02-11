@@ -5,62 +5,17 @@ An AI-powered travel assistant built on the **ReAct (Reason + Act) pattern** usi
 ## System Design
 
 ```mermaid
-flowchart TB
-    User([fa:fa-user User])
-
-    subgraph Frontend
-        ST[Streamlit Chat UI<br/><i>streamlit_app.py</i>]
-    end
-
-    subgraph Backend [FastAPI Backend — app/main.py]
-        API[POST /completions<br/><i>thread_id + user message</i>]
-    end
-
-    subgraph Agent [LangGraph Agent — app/agent.py]
-        direction TB
-        MEM[(InMemorySaver<br/>Conversation History<br/><i>per thread_id</i>)]
-
-        subgraph MW [Middleware Pipeline]
-            direction TB
-            TS[1. Tool Selector<br/><i>Pre-model: LLM classifier decides<br/>which tools are relevant</i>]
-            RM[2. Retry Model<br/><i>Exponential backoff + jitter<br/>up to 3 attempts</i>]
-            RT[3. Retry Tool<br/><i>Exponential backoff + jitter<br/>up to 2 attempts</i>]
-            HG[4. Hallucination Guardrail<br/><i>Post-model: verifier LLM checks<br/>grounding — PASS / FAIL</i>]
-
-            TS --> RM --> RT --> HG
-        end
-
-        MODEL[Google Gemini 3 Flash<br/><i>Main LLM</i>]
-    end
-
-    subgraph Tools [External APIs — No API Keys]
-        direction LR
-        GEO[OpenStreetMap Nominatim<br/><i>Geocoding</i>]
-        MET[MET Norway<br/><i>7-Day Forecast</i>]
-    end
-
-    VERIFIER[Verifier LLM<br/><i>Gemini 3 Flash</i>]
-
-    User -->|Chat message| ST
-    ST -->|HTTP POST| API
-    API -->|Load history| MEM
-    API --> MW
-    RM -->|Wrapped call| MODEL
-    MODEL -->|Tool call?| RT
-    RT -->|get_weather_forecast| GEO
-    GEO -->|lat, lon| MET
-    MET -->|Forecast JSON| RT
-    HG -->|Grounding check| VERIFIER
-    VERIFIER -->|PASS| API
-    VERIFIER -.->|FAIL: re-generate| MODEL
-    API -->|Response + debug trace| ST
-    ST -->|Answer| User
-
-    style MW fill:#f0f4ff,stroke:#4a6fa5
-    style Agent fill:#f9f9f9,stroke:#333
-    style Tools fill:#fff7ed,stroke:#c97a2e
-    style Frontend fill:#edf7ed,stroke:#4a8c5c
-    style Backend fill:#f5f0ff,stroke:#7a5caa
+flowchart LR
+    User([User]) --> ST[Streamlit UI]
+    ST -->|HTTP| API[FastAPI]
+    API --> AGENT[LangGraph Agent<br/>+ Middleware]
+    AGENT --> LLM[Gemini 3 Flash]
+    AGENT -->|Weather Tool| EXT[External APIs<br/>Nominatim · MET Norway]
+    AGENT --> MEM[(Conversation<br/>History)]
+    AGENT --> GUARD[Hallucination<br/>Guardrail]
+    GUARD -.->|FAIL: retry| LLM
+    AGENT -->|Response| API
+    API --> ST --> User
 ```
 
 **Components:**
