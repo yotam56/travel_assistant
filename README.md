@@ -18,6 +18,17 @@ flowchart LR
     API --> ST --> User
 ```
 
+### ReAct Loop
+
+```mermaid
+flowchart LR
+    IN([User Input]) --> MODEL[Model<br/>Reason]
+    MODEL -->|Need data?| ACTION[Action<br/>Call Tool]
+    ACTION --> OBS[Observation<br/>Tool Result]
+    OBS --> MODEL
+    MODEL -->|Done| OUT([Output to User])
+```
+
 **Components:**
 - **Frontend**: Streamlit chat interface with optional debug trace panel (`streamlit_app.py`)
 - **Backend**: FastAPI server with `/completions` endpoint (`app/main.py`)
