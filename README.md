@@ -1,4 +1,4 @@
-# Ava — Travel Assistant
+# Ava - Travel Assistant
 
 An AI-powered travel assistant built on the **ReAct (Reason + Act) pattern** using **LangGraph**, **LangChain**, and **Google Gemini**. The agent reasons about the user's query, decides whether to act by calling external tools, observes the results, and then formulates a grounded response — all enhanced by a middleware pipeline for tool selection, retry logic, and hallucination detection.
 
@@ -23,6 +23,8 @@ flowchart LR
 <p align="center">
   <img src="assets/ReAct.png" alt="ReAct pattern: Query → Thought → Action → Tool → Observation → loop back or Answer" width="400"/>
 </p>
+
+![App demo](assets/demo.gif)
 
 **Components:**
 - **Frontend**: Streamlit chat interface with optional debug trace panel (`streamlit_app.py`)
