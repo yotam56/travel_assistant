@@ -20,7 +20,7 @@ if st.sidebar.button("New chat"):
     st.session_state.thread_id = str(uuid.uuid4())
     st.rerun()
 
-show_debug = st.sidebar.toggle("Show debug trace", value=False)
+show_debug = st.sidebar.toggle("Show debug trace", value=True)
 
 # ── Debug rendering ──────────────────────────────────────────────────────────
 
