@@ -24,6 +24,7 @@ flowchart LR
   <img src="assets/ReAct.png" alt="ReAct pattern: Query → Thought → Action → Tool → Observation → loop back or Answer" width="400"/>
 </p>
 
+## Demo:
 ![App demo](assets/demo.gif)
 
 **Components:**
