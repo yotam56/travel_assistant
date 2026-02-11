@@ -7,6 +7,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.middleware.event_collector import reset_events, get_events
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -88,6 +90,7 @@ async def completions(req: CompletionRequest):
     from app.agent import agent
 
     logger.info("Invoking agent for thread_id=%s", req.thread_id)
+    reset_events()
     try:
         config = {"configurable": {"thread_id": req.thread_id}}
         result = agent.invoke(
@@ -119,4 +122,5 @@ async def completions(req: CompletionRequest):
             }
         ],
         "debug": _serialize_messages(result["messages"]),
+        "middleware_events": get_events(),
     }
